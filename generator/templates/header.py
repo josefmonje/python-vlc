@@ -3,7 +3,7 @@
 
 # Python ctypes bindings for VLC
 #
-# Copyright (C) 2009-2012 the VideoLAN team
+# Copyright (C) 2009-2017 the VideoLAN team
 # $Id: $
 #
 # Authors: Olivier Aubert <contact at olivieraubert.net>
@@ -28,7 +28,7 @@
 U{http://wiki.videolan.org/LibVLC}.
 
 You can find the documentation and a README file with some examples
-at U{http://www.advene.org/download/python-ctypes/}.
+at U{http://www.olivieraubert.net/vlc/python-ctypes/}.
 
 Basically, the most important class is L{Instance}, which is used
 to create a libvlc instance.  From this instance, you then create
@@ -48,6 +48,9 @@ import functools
 
 # Used by EventManager in override.py
 from inspect import getargspec
+
+import logging
+logger = logging.getLogger(__name__)
 
 build_date  = ''  # build time stamp and __version__, see generate.py
 
@@ -105,7 +108,19 @@ _internal_guard = object()
 
 def find_lib():
     dll = None
-    plugin_path = None
+    plugin_path = os.environ.get('PYTHON_VLC_MODULE_PATH', None)
+    if 'PYTHON_VLC_LIB_PATH' in os.environ:
+        try:
+            dll = ctypes.CDLL(os.environ['PYTHON_VLC_LIB_PATH'])
+        except OSError:
+            logger.error("Cannot load lib specified by PYTHON_VLC_LIB_PATH env. variable")
+            sys.exit(1)
+    if plugin_path and not os.path.isdir(plugin_path):
+        logger.error("Invalid PYTHON_VLC_MODULE_PATH specified. Please fix.")
+        sys.exit(1)
+    if dll is not None:
+        return dll, plugin_path
+
     if sys.platform.startswith('linux'):
         p = find_library('vlc')
         try:
